@@ -1,6 +1,11 @@
-# dress
+<img src="/dress.png" height="120px" align="right" />
+# dress 
 
 > add symbols back into a stripped ELF binary
+
+**Building**:
+
+`gcc dress.c libelf.c logging.c -o dress`
 
 # Usage
 
