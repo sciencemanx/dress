@@ -378,8 +378,12 @@ bool add_symbols(elf64 *elf, symbol_t **symbols) {
 		sym_tab[i].st_name = (size_t) str_tbl_tracer - (size_t) sym_str_tbl + 1;
 		sym_tab[i].st_value = (Elf64_Addr) symbols[i]->addr;
 		sym_tab[i].st_info = symbols[i]->is_function ? STT_FUNC : STT_OBJECT;
-		sym_tab[i].st_shndx = symbols[i]->section != NULL ? 
-			get_section_hdr_index(elf, symbols[i]->section) : get_section_hdr_index(elf, ".text");
+		if (symbols[i]->section != NULL) {
+			sym_tab[i].st_shndx = get_section_hdr_index(elf, symbols[i]->section);
+		} else {
+			sym_tab[i].st_shndx = symbols[i]->is_function ? 
+				get_section_hdr_index(elf, ".text") : get_section_hdr_index(elf, ".data");
+		}
 		strcpy(str_tbl_tracer, symbols[i]->name);
 		str_tbl_tracer += strlen(symbols[i]->name) + 1;
 	}
