@@ -18,7 +18,7 @@
 #define RESET "\x1b[0m"
 
 // this flag determines whether these functions actually print anything
-bool verbose = true;
+bool verbose = false;
 
 // pass through to printf that can be disabled by the verbose flag [white]
 void print(char *msg, ...) {

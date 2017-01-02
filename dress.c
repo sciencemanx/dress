@@ -12,6 +12,8 @@
 
 #define MAX_LINE 1024
 
+extern bool verbose;
+
 void usage(char *prog_name) {
 	printf("Usage: %s <in-file> <out-file> <symbol-file>\n", prog_name);
 	exit(1);
@@ -118,17 +120,16 @@ int main(int argc, char **argv) {
 	symbol_t **symbols;
 	struct stat st;
 
-	// if (argc != 4) usage(argv[0]);
+	if (argc < 4) usage(argv[0]);
 
-	in_file = "b.out";
+	if (argc == 5 && !strcmp("-v", argv[4])) verbose = true;
+
 	if (argc > 1) in_file = argv[1];
 	in_fd = open(in_file, O_RDWR);
 
-	out_file = "c.out";
 	if (argc > 2) out_file = argv[2];
 	out_fd = open(out_file, O_WRONLY | O_CREAT);
 
-	symbol_file = "a.syms";
 	if (argc > 3) symbol_file = argv[3];
 	sym_fp = fopen(symbol_file, "r");
 
