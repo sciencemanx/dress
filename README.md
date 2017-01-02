@@ -3,6 +3,8 @@
 
 > add symbols back into a stripped ELF binary
 
+[website](http://van.prooyen.com/projects/#dress)
+
 # Usage
 
 > ./dress &lt;in-file&gt; &lt;out-file&gt; &lt;sym-file&gt; [-v]
