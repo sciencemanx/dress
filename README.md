@@ -3,10 +3,6 @@
 
 > add symbols back into a stripped ELF binary
 
-**Building**:
-
-`gcc dress.c libelf.c logging.c -o dress`
-
 # Usage
 
 > ./dress &lt;in-file&gt; &lt;out-file&gt; &lt;sym-file&gt; [-v]
@@ -35,6 +31,10 @@ Symbol table '.symtab' contains 3 entries:
 1: 0000000000400593     0 FUNC    LOCAL  DEFAULT   14 main
 2: 0000000000400566     0 FUNC    LOCAL  DEFAULT   14 test
 ```
+
+## Building
+
+`gcc dress.c libelf.c logging.c -o dress`
 
 # Symbol file format
 
