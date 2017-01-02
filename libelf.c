@@ -66,7 +66,7 @@ bool write_elf64(elf64 *elf, int fd) {
 	int written, n;
 
 	n = elf->file_size;
-	while (written > 0) {
+	while (n > 0) {
 		written = write(fd, elf->file, n);
 		if (written <= 0) return false;
 		n -= written;
@@ -145,7 +145,7 @@ void print_symbols(elf64 *elf) {
 	n = symbol_tbl_hdr->sh_size / symbol_tbl_hdr->sh_entsize;
 	for (i = 0; i < n; i++) {
 		symbol = symbol_tbl[i];
-		printf("  name: %40s | value: 0x%08lx | size: %3lu\n", 
+		printf("  name: %20s | value: 0x%08lx | size: %3lu\n", 
 			&symbol_str_tbl[symbol.st_name], symbol.st_value, symbol.st_size);
 	}
 }

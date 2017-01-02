@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <unistd.h>
-#include <errno.h>
+#include <sys/stat.h>
 
 #include "libelf.h"
 #include "logging.h"
@@ -116,6 +116,7 @@ int main(int argc, char **argv) {
 	elf64 elf;
 	char *in_file, *out_file, *symbol_file;
 	symbol_t **symbols;
+	struct stat st;
 
 	// if (argc != 4) usage(argv[0]);
 
@@ -141,7 +142,9 @@ int main(int argc, char **argv) {
 	info("adding symbols to elf");
 	if (add_symbols(&elf, symbols)) {
 		info("writing elf to %d", out_fd);
+		fstat(in_fd, &st);
 		write_elf64(&elf, out_fd);
+		fchmod(out_fd, st.st_mode & 07777);
 	} else {
 		warn("[-] failed to add symbols");
 	}
