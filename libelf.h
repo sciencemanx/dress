@@ -26,6 +26,7 @@ typedef struct symbol {
 	char *name;
 	void *addr;
 	bool is_function;
+	char *section;
 } symbol_t;
 
 typedef struct {

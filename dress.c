@@ -76,12 +76,11 @@ symbol_t **read_symbol_file(FILE *fp) {
 
 		symbol = malloc(sizeof(*symbol));
 
-
 		symbol->name = get_name(line);
 		symbol->addr = get_addr(line);
+		symbol->section = NULL;
 
-		if (is_function_sym(line)) symbol->is_function = true;
-		else symbol->is_function = false;
+		symbol->is_function = is_function_sym(line);
 
 		symbols[num_symbols - 1] = symbol;
 	}
@@ -115,7 +114,6 @@ int main(int argc, char **argv) {
 	out_file = "c.out";
 	if (argc > 2) out_file = argv[2];
 	out_fd = open(out_file, O_WRONLY | O_CREAT);
-	printf("%s\n", strerror(errno));
 
 	symbol_file = "a.syms";
 	if (argc > 3) symbol_file = argv[3];

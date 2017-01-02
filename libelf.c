@@ -32,10 +32,7 @@ char *sh_type_str(uint32_t sh_type) {
 
 bool update_elf64(elf64 *elf) {
 	int i;
-	Elf64_Shdr section_str_tbl_hdr;
-	Elf64_Shdr section_header;
-
-	printf("updating elf\n");
+	Elf64_Shdr section_str_tbl_hdr, section_header;
 
 	elf->elf_hdr = (Elf64_Ehdr *) elf->file;
 
@@ -47,11 +44,6 @@ bool update_elf64(elf64 *elf) {
 
 	section_str_tbl_hdr = elf->section_hdrs[elf->elf_hdr->e_shstrndx];
 	elf->section_str_tbl = &(elf->file)[section_str_tbl_hdr.sh_offset];
-
-	printf("section name index: %d\n", elf->elf_hdr->e_shstrndx);
-	printf("shstr hdr located at %p\n", &elf->section_hdrs[elf->elf_hdr->e_shstrndx]);
-	printf("shstrtbl offset: 0x%lx\n", section_str_tbl_hdr.sh_offset);
-	printf("file start: %p, end: %p\n", elf->file, elf->file + elf->file_size);
 }
 
 bool create_elf64(elf64 *elf, int fd) {
@@ -72,14 +64,12 @@ bool create_elf64(elf64 *elf, int fd) {
 bool write_elf64(elf64 *elf, int fd) {
 	int written, n;
 
-	// n = elf->file_size;
-	// while (written > 0) {
-	// 	written = write(fd, elf->file, n);
-	// 	if (written <= 0) return false;
-	// 	n -= written;
-	// }
-
-	write(fd, elf->file, elf->file_size);
+	n = elf->file_size;
+	while (written > 0) {
+		written = write(fd, elf->file, n);
+		if (written <= 0) return false;
+		n -= written;
+	}
 
 	return true;
 }
@@ -114,8 +104,6 @@ Elf64_Shdr *get_linked_hdr(elf64 *elf, Elf64_Shdr *section_hdr) {
 void print_sections(elf64 *elf) {
 	int i;
 	Elf64_Shdr sh_hdr;
-
-	printf("section_headers: %p\n", elf->section_hdrs);
 
 	printf("Sections:\n");
 	printf(" NUM | %20s | %15s | LINK\n", "NAME", "TYPE");
@@ -154,8 +142,6 @@ void print_symbols(elf64 *elf) {
 
 	symbol_str_tbl = (char *) &elf->file[symbol_str_tbl_hdr->sh_offset];
 
-	printf("%lu / %lu\n", symbol_tbl_hdr->sh_size, symbol_tbl_hdr->sh_entsize);
-
 	n = symbol_tbl_hdr->sh_size / symbol_tbl_hdr->sh_entsize;
 	for (i = 0; i < n; i++) {
 		symbol = symbol_tbl[i];
@@ -165,11 +151,6 @@ void print_symbols(elf64 *elf) {
 }
 
 char *get_section_name(elf64 *elf, Elf64_Shdr *section_hdr) {
-	// printf("in get_section_name\n");
-	// printf("name index: 0x%x\n", section_hdr->sh_name);
-	// printf("name: %s\n", &elf->section_str_tbl[section_hdr->sh_name]);
-	// printf("address of file %p, address of string %p\n",
-		// elf->file, &elf->section_str_tbl[section_hdr->sh_name]);
 	return &elf->section_str_tbl[section_hdr->sh_name];
 }
 
@@ -204,11 +185,7 @@ bool increase_file_size(elf64 *elf, size_t inc) {
 int get_section_hdr_index(elf64 *elf, char *name) {
 	int i;
 
-	printf("in get_section_hdr_index (%lu hdrs)\n", elf->num_section_hdrs);
-
-
 	for (i = 0; i < elf->num_section_hdrs; i++) {
-		printf("get %d, name: %s\n", i, get_section_name(elf, &elf->section_hdrs[i]));
 		if (strcmp(get_section_name(elf, &elf->section_hdrs[i]), name) == 0) {
 			return i;
 		}
@@ -220,11 +197,8 @@ int get_section_hdr_index(elf64 *elf, char *name) {
 Elf64_Shdr *get_section_hdr(elf64 *elf, char *name) {
 	int i;
 
-	// printf("in get_section_hdr\n");
-
 	i = get_section_hdr_index(elf, name);
 
-	// printf("got section_hdr index\n");
 	if (i == -1) return NULL;
 	else return &elf->section_hdrs[i];
 }
@@ -277,9 +251,6 @@ bool expand_section(elf64 *elf, char *name, size_t increment) {
 	expanded_section_end = &elf->file[expanded_section_hdr->sh_offset] + expanded_section_hdr->sh_size;
 
 	memmove(expanded_section_end + increment, expanded_section_end, displaced);
-	printf("moving %p to %p (0x%lx bytes)\n", 
-		expanded_section_end, expanded_section_end + increment, displaced);
-	printf("       %p    %p\n", expanded_section_end + displaced, expanded_section_end + increment + displaced);
 	memset(expanded_section_end, 0, increment);
 
 	update_elf64(elf);
@@ -300,8 +271,6 @@ bool append_to_section(elf64 *elf, char *name, uint8_t *buf, size_t len) {
 		printf("[-] unable to find section header\n");
 		return false;
 	}
-
-	printf("asdfasdfa\n");
 
 	section_end_offset = section_hdr->sh_offset + section_hdr->sh_size;
 
@@ -366,7 +335,7 @@ bool create_section(elf64 *elf, char *name) {
 bool add_symbols(elf64 *elf, symbol_t **symbols) {
 	size_t total_len, num_symbols;
 	symbol_t **tracer;
-	char *sym_str_tbl, *str_tbl_tracer;
+	char *sym_str_tbl, *str_tbl_tracer, empty[1];
 	Elf64_Shdr *symtab, *strtab;
 	Elf64_Sym *sym_tab;
 	int i;
@@ -375,26 +344,24 @@ bool add_symbols(elf64 *elf, symbol_t **symbols) {
 	if (symtab != NULL) strtab = get_linked_hdr(elf, symtab);
 	strtab = get_section_hdr(elf, ".strtab");
 
-	if (symtab == NULL && !create_section(elf, ".symtab")) {
-		printf("[-] failed to find/create new symtab\n");
+	if (strtab == NULL && !create_section(elf, ".strtab")) {
+		printf("[-] failed to find/create new strtab\n");		
 		return false;
 	}
-	if (symtab == NULL && !create_section(elf, ".strtab")) {
-		printf("[-] failed to find/create new strtab\n");
+	empty[0] = 0;
+	append_to_section(elf, ".strtab", empty, 1);
+	if (symtab == NULL && !create_section(elf, ".symtab")) {
+		printf("[-] failed to find/create new symtab\n");
 		return false;
 	}
 
 	symtab = get_section_hdr(elf, ".symtab");
 	strtab = get_section_hdr(elf, ".strtab");
 
-	printf("symtab %p strtab %p\n", symtab, strtab);
-
 	symtab->sh_type = SHT_SYMTAB;
 	strtab->sh_type = SHT_STRTAB;
 
 	symtab->sh_link = get_section_hdr_index(elf, ".strtab");
-
-	print_sections(elf);
 
 	total_len = 0;
 	num_symbols = 0;
@@ -407,29 +374,24 @@ bool add_symbols(elf64 *elf, symbol_t **symbols) {
 	sym_tab = calloc(num_symbols, sizeof(*sym_tab));
 
 	str_tbl_tracer = sym_str_tbl;
-	for (tracer = symbols, i = 0; *tracer != NULL; tracer++, i++) {
-		sym_tab[i].st_name = (size_t) str_tbl_tracer - (size_t) sym_str_tbl;
-		sym_tab[i].st_value = (Elf64_Addr) (*tracer)->addr;
-		sym_tab[i].st_info = (*tracer)->is_function ? STT_FUNC : STT_OBJECT;
-		// sym_tab[i]->st_shndx;
-		strcpy(str_tbl_tracer, (*tracer)->name);
-		str_tbl_tracer += strlen((*tracer)->name) + 1;
+	for (i = 0; symbols[i] != NULL; tracer++, i++) {
+		sym_tab[i].st_name = (size_t) str_tbl_tracer - (size_t) sym_str_tbl + 1;
+		sym_tab[i].st_value = (Elf64_Addr) symbols[i]->addr;
+		sym_tab[i].st_info = symbols[i]->is_function ? STT_FUNC : STT_OBJECT;
+		sym_tab[i].st_shndx = symbols[i]->section != NULL ? 
+			get_section_hdr_index(elf, symbols[i]->section) : get_section_hdr_index(elf, ".text");
+		strcpy(str_tbl_tracer, symbols[i]->name);
+		str_tbl_tracer += strlen(symbols[i]->name) + 1;
 	}
 
 	append_to_section(elf, ".strtab", sym_str_tbl, total_len);
 	append_to_section(elf, ".symtab", (char *) sym_tab, num_symbols * sizeof(*sym_tab));
 
-	printf("appended to section\n");
-
 	symtab = get_section_hdr(elf, ".symtab");
 	symtab->sh_size = sizeof(Elf64_Sym) * num_symbols;
 	symtab->sh_entsize = sizeof(Elf64_Sym);
 
-	printf("symtab shoff: 0x%lx, strtab shoff: 0x%lx\n",
-		symtab->sh_offset, strtab->sh_offset);
-
-	printf("section hdrs offset 0x%lx\n",elf->elf_hdr->e_shoff);
-
+	free(sym_tab);
 	free(sym_str_tbl);
 
 	print_symbols(elf);
