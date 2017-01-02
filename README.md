@@ -16,6 +16,26 @@
 * `sym-file`: path to the symbol file
 * `-v`: turns on verbose output; this is generally not helpful unless something is going wrong
 
+## Example
+
+```
+$ gcc test.c
+$ readelf -s a.out
+Symbol table '.symtab' contains 70 entries:
+...
+62: 0000000000601044     4 OBJECT  GLOBAL DEFAULT   26 counter
+64: 0000000000400593    54 FUNC    GLOBAL DEFAULT   14 main
+69: 0000000000400566    45 FUNC    GLOBAL DEFAULT   14 test
+$ strip a.out -o b.out
+$ readelf -s b.out
+$ dress b.out c.out a.syms
+$ readelf -s c.out
+Symbol table '.symtab' contains 3 entries:
+0: 0000000000601044     0 OBJECT  LOCAL  DEFAULT   25 counter
+1: 0000000000400593     0 FUNC    LOCAL  DEFAULT   14 main
+2: 0000000000400566     0 FUNC    LOCAL  DEFAULT   14 test
+```
+
 # Symbol file format
 
 Currently, there are two types of symbols: global variables and function names. By default, all symbols are globals. However, adding parentheses after the symbol name designates it as a function. The address of the symbol is indicated after the @ sign with an asterix. The address can be in either base 16 or base 10.
