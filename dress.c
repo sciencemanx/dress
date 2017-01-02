@@ -8,6 +8,7 @@
 #include <errno.h>
 
 #include "libelf.h"
+#include "logging.h"
 
 #define MAX_LINE 1024
 
@@ -49,7 +50,6 @@ void *get_addr(char *line) {
 	start = strchr(line, '*');
 	if (start == NULL) return NULL;
 
-
 	start++;
 	base = 10;
 	if (start[0] == '0' && start[1] == 'x') {
@@ -86,7 +86,7 @@ symbol_t **read_symbol_file(FILE *fp) {
 			free(symbol);
 			continue;
 		}
-		if (symbol->addr = NULL) {
+		if (symbol->addr == NULL) {
 			free(symbol);
 			continue;
 		}
@@ -131,19 +131,19 @@ int main(int argc, char **argv) {
 	if (argc > 3) symbol_file = argv[3];
 	sym_fp = fopen(symbol_file, "r");
 
-	printf("[+] parsing symbol file\n");
+	info("parsing symbol file");
 	symbols = read_symbol_file(sym_fp);
 	print_syms(symbols);
 
-	printf("[+] creating elf\n");
+	info("creating elf");
 	create_elf64(&elf, in_fd);
 
-	printf("[+] adding symbols to elf\n");
+	info("adding symbols to elf");
 	if (add_symbols(&elf, symbols)) {
-		printf("[+] writing elf to %d\n", out_fd);
+		info("writing elf to %d", out_fd);
 		write_elf64(&elf, out_fd);
 	} else {
-		printf("[-] failed to add symbols\n");
+		warn("[-] failed to add symbols");
 	}
 
 	close(in_fd);

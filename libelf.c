@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "logging.h"
+
 #define ENTRY(x) case x: return #x + 4;
 char *sh_type_str(uint32_t sh_type) {
 	switch (sh_type) {
@@ -51,7 +53,6 @@ bool create_elf64(elf64 *elf, int fd) {
 
 	fstat(fd, &st);
 
-	// elf->file = mmap(NULL, st.st_size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 	elf->file = malloc(st.st_size);
 	read(fd, elf->file, st.st_size);
 	elf->file_size = st.st_size;
@@ -75,7 +76,6 @@ bool write_elf64(elf64 *elf, int fd) {
 }
 
 bool delete_elf64(elf64 *elf) {
-	// munmap(elf->file, elf->file_size);
 	free(elf->file);
 
 	return true;
@@ -136,7 +136,7 @@ void print_symbols(elf64 *elf) {
 	symbol_str_tbl_hdr = get_linked_hdr(elf, symbol_tbl_hdr);
 
 	if (symbol_str_tbl_hdr == NULL) {
-		printf("  error: no strings for symbols");
+		warn("  error: no strings for symbols");
 		return;
 	}
 
@@ -158,20 +158,19 @@ bool increase_file_size(elf64 *elf, size_t inc) {
 	size_t new_file_size;
 	uint8_t *new_file;
 
-	printf("[+] increasing file size from %lu ", elf->file_size);
+	info("increasing file size from %lu to %lu (by %lu bytes)",
+		elf->file_size, elf->file_size + inc, inc);
 
 	new_file_size = elf->file_size + inc;
 
-	printf("to %lu (by %lu bytes)\n", new_file_size, inc);
-
 	new_file = realloc(elf->file, new_file_size);
 	if (new_file == NULL) {
-		printf("[-] failed to reallocate file\n");
+		warn("failed to reallocate file");
 		return false;
 	}
 
 	if (elf->file != new_file) {
-		printf("[+] file now in new location\n");
+		info("file now in new location");
 	}
 
 	elf->file = new_file;
@@ -211,31 +210,31 @@ bool expand_section(elf64 *elf, char *name, size_t increment) {
 	uint8_t *expanded_section_end;
 	size_t displaced;
 
-	printf("[+] expanding %s\n", name);
+	info("expanding %s", name);
 
 	expanded_section_hdr = get_section_hdr(elf, name);
 	if (expanded_section_hdr == NULL) {
-		printf("[-] unable to find section header %s\n", name);
+		warn("unable to find section header %s", name);
 		return false;
 	}
 
 	displaced = elf->file_size - expanded_section_hdr->sh_offset - expanded_section_hdr->sh_size;
 
 	if (!increase_file_size(elf, increment)) {
-		printf("[-] unable to increase file size\n");
+		warn("unable to increase file size");
 		return false;
 	}
 
 	if (elf->elf_hdr->e_shoff >= expanded_section_hdr->sh_offset) {
-		printf("[+] increasing shoff 0x%lx to ", elf->elf_hdr->e_shoff);
+		info("increasing shoff 0x%lx to 0x%lx", 
+			elf->elf_hdr->e_shoff, elf->elf_hdr->e_shoff + increment);
 		elf->elf_hdr->e_shoff += increment;
-		printf("0x%lx\n", elf->elf_hdr->e_shoff);
 	}
 
 	for (i = 0; i < elf->num_section_hdrs; i++) {
 		section_hdr = &elf->section_hdrs[i];
 		if (section_hdr->sh_offset > expanded_section_hdr->sh_offset) {
-			printf("[+] expanding section hdr (i: %d)\n", i);
+			info("expanding section hdr (i: %d)", i);
 			section_hdr->sh_offset += increment;
 		}
 	}
@@ -243,7 +242,7 @@ bool expand_section(elf64 *elf, char *name, size_t increment) {
 	for (i = 0; i < elf->num_program_hdrs; i++) { //todo implement alignment checks
 		program_hdr = &elf->program_hdrs[i];
 		if (program_hdr->p_offset >= expanded_section_hdr->sh_offset) {
-			printf("[+] expanding segment hdr (i: %d)\n", i);
+			info("expanding segment hdr (i: %d)", i);
 			program_hdr->p_offset += increment;
 		}
 	}
@@ -268,14 +267,14 @@ bool append_to_section(elf64 *elf, char *name, uint8_t *buf, size_t len) {
 
 	section_hdr = get_section_hdr(elf, name);
 	if (section_hdr == NULL) {
-		printf("[-] unable to find section header\n");
+		warn("unable to find section header");
 		return false;
 	}
 
 	section_end_offset = section_hdr->sh_offset + section_hdr->sh_size;
 
 	if (!expand_section(elf, name, len)) {
-		printf("[-] unable to expand section\n");
+		warn("unable to expand section");
 		return false;
 	}
 
@@ -298,14 +297,14 @@ bool create_section(elf64 *elf, char *name) {
 	shstrtab_hdr = get_section_hdr(elf, ".shstrtab");
 
 	if (shstrtab_hdr == NULL) {
-		printf("[-] unable to find .shstrtab\n");
+		warn("unable to find .shstrtab");
 		return false;
 	}
 
 	name_offset = shstrtab_hdr->sh_size;
 
 	if (!append_to_section(elf, ".shstrtab", name, strlen(name) + 1)) {
-		printf("[-] failed to add section name to shstrtab\n");
+		warn("failed to add section name to shstrtab");
 		return false;
 	}
 
@@ -321,7 +320,7 @@ bool create_section(elf64 *elf, char *name) {
 	new_hdr.sh_entsize = 0; // change this after creation;
 
 	if (!increase_file_size(elf, sizeof(new_hdr))) {
-		printf("[-] failed to increase file size\n");
+		warn("failed to increase file size");
 		return false;
 	}
 	
@@ -345,13 +344,13 @@ bool add_symbols(elf64 *elf, symbol_t **symbols) {
 	strtab = get_section_hdr(elf, ".strtab");
 
 	if (strtab == NULL && !create_section(elf, ".strtab")) {
-		printf("[-] failed to find/create new strtab\n");		
+		warn("failed to find/create new strtab");		
 		return false;
 	}
 	empty[0] = 0;
 	append_to_section(elf, ".strtab", empty, 1);
 	if (symtab == NULL && !create_section(elf, ".symtab")) {
-		printf("[-] failed to find/create new symtab\n");
+		warn("failed to find/create new symtab");
 		return false;
 	}
 
