@@ -49,7 +49,9 @@ void *get_addr(char *line) {
 	start = strchr(line, '*');
 	if (start == NULL) return NULL;
 
+
 	start++;
+	base = 10;
 	if (start[0] == '0' && start[1] == 'x') {
 		base = 16;
 		start += 2;
