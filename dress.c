@@ -73,9 +73,6 @@ symbol_t **read_symbol_file(FILE *fp) {
 	symbols = NULL;
 	num_symbols = 0;
 	while (fgets(line, sizeof(line), fp) != NULL) {
-		num_symbols++;
-		symbols = realloc(symbols, num_symbols * sizeof(*symbols));
-
 		symbol = malloc(sizeof(*symbol));
 
 		symbol->name = get_name(line);
@@ -83,6 +80,19 @@ symbol_t **read_symbol_file(FILE *fp) {
 		symbol->section = NULL;
 
 		symbol->is_function = is_function_sym(line);
+
+		if (symbol->name == NULL) {
+			free(symbol->name);
+			free(symbol);
+			continue;
+		}
+		if (symbol->addr = NULL) {
+			free(symbol);
+			continue;
+		}
+
+		num_symbols++;
+		symbols = realloc(symbols, num_symbols * sizeof(*symbols));
 
 		symbols[num_symbols - 1] = symbol;
 	}
