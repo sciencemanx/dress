@@ -1,5 +1,0 @@
-segfaults with anything over 1512
-
-[+] increasing file size from 1027957 to 1028077 (by 120 bytes)
-[+] file now in new location
-[1]    26947 segmentation fault (core dumped)  ./dress /tmp/who_dress /tmp/who_dress2 /tmp/syms -v
