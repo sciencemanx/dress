@@ -261,7 +261,6 @@ bool expand_section(elf64 *elf, char *name, size_t increment) {
 	update_elf64(elf);
 
 	get_section_hdr(elf, name)->sh_size += increment;
-	printf("%p\n", expanded_section_hdr);
 
 	return true;
 }
@@ -399,7 +398,6 @@ bool add_symbols(elf64 *elf, symbol_t **symbols) {
 		strcpy(str_tbl_tracer, symbols[i]->name);
 		str_tbl_tracer += strlen(symbols[i]->name) + 1;
 	}
-	printf("[+]Total symbols: %d\n", num_symbols);
 	append_to_section(elf, ".strtab", sym_str_tbl, total_len);
 	append_to_section(elf, ".symtab", (char *) sym_tab, num_symbols * sizeof(*sym_tab));
 
