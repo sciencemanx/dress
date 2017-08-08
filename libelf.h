@@ -39,6 +39,7 @@ typedef struct {
 	char *section_str_tbl;
 	uint8_t *file;
 	size_t file_size;
+	size_t sh_info_index;
 } elf64;
 
 

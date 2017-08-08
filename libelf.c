@@ -9,7 +9,6 @@
 
 #include "logging.h"
 
-int global_sh_info_index = 0;
 
 #define ENTRY(x) case x: return #x + 4;
 char *sh_type_str(uint32_t sh_type) {
@@ -321,7 +320,7 @@ bool create_section(elf64 *elf, char *name) {
 	new_hdr.sh_offset = elf->elf_hdr->e_shoff; // inserts before section header
 	new_hdr.sh_size = 0;
 	new_hdr.sh_link = 0; // change this after creation
-	new_hdr.sh_info = global_sh_info_index; // section type dependent
+	new_hdr.sh_info = elf->sh_info_index; // section type dependent
 	new_hdr.sh_addralign = 0;
 	new_hdr.sh_entsize = 0; // change this after creation;
 
@@ -347,7 +346,7 @@ bool add_symbols(elf64 *elf, symbol_t **symbols) {
 
 	/* Calculate the number of symbols */
 	for (tracer = symbols; *tracer != NULL; tracer++) {
-		global_sh_info_index++;
+		elf->sh_info_index++;
 	}
 
 	symtab = get_section_hdr(elf, ".symtab");
