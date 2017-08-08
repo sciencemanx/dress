@@ -66,6 +66,18 @@ bool is_function_sym(char *line) {
 	return strchr(line, '(') != NULL && strchr(line, ')') != NULL;
 }
 
+int get_size(char *line)
+{
+	char *size = strchr(line, '^');
+	char *end = strrchr(line, '^');
+
+	if(size == NULL) return 0;
+
+	long sym_size = strtol(size+1, end, 10); //+1 to skip the ^
+
+	return sym_size;
+
+}
 symbol_t **read_symbol_file(FILE *fp) {
 	char line[MAX_LINE];
 	symbol_t **symbols;
@@ -80,7 +92,7 @@ symbol_t **read_symbol_file(FILE *fp) {
 		symbol->name = get_name(line);
 		symbol->addr = get_addr(line);
 		symbol->section = NULL;
-
+		symbol->size = get_size(line);
 		symbol->is_function = is_function_sym(line);
 
 		if (symbol->name == NULL) {
@@ -107,7 +119,7 @@ symbol_t **read_symbol_file(FILE *fp) {
 void print_syms(symbol_t **symbols) {
 	while (*symbols != NULL) {
 		if ((*symbols)->is_function) printf("function: ");
-		printf("%s @ *%p\n", (*symbols)->name, (*symbols)->addr);
+		printf("%s @ *%p %i\n", (*symbols)->name, (*symbols)->addr, (*symbols)->size);
 		symbols++;
 	}
 }

@@ -1,0 +1,6 @@
+counter @ *0x601044 ^4^
+function: main @ *0x400593 ^40^
+function: test @ *0x400566 ^10^
+
+
+#####These are mock values#####

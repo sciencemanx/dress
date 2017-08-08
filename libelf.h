@@ -27,17 +27,19 @@ typedef struct symbol {
 	void *addr;
 	bool is_function;
 	char *section;
+	long size;
 } symbol_t;
 
 typedef struct {
-	uint8_t *file;
-	size_t file_size;
 	Elf64_Ehdr *elf_hdr;
 	Elf64_Phdr *program_hdrs;
 	size_t num_program_hdrs;
 	Elf64_Shdr *section_hdrs;
 	size_t num_section_hdrs;
 	char *section_str_tbl;
+	uint8_t *file;
+	size_t file_size;
+	size_t sh_info_index;
 } elf64;
 
 

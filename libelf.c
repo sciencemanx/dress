@@ -9,6 +9,7 @@
 
 #include "logging.h"
 
+
 #define ENTRY(x) case x: return #x + 4;
 char *sh_type_str(uint32_t sh_type) {
 	switch (sh_type) {
@@ -155,15 +156,18 @@ char *get_section_name(elf64 *elf, Elf64_Shdr *section_hdr) {
 }
 
 bool increase_file_size(elf64 *elf, size_t inc) {
-	size_t new_file_size;
-	uint8_t *new_file;
+	size_t new_file_size = 0;
+	uint8_t *new_file = 0;
 
 	info("increasing file size from %lu to %lu (by %lu bytes)",
 		elf->file_size, elf->file_size + inc, inc);
 
 	new_file_size = elf->file_size + inc;
 
+	/* This realloc call is messing up the expanded_section_hdr pointer */
+	/* Causing a segfault on line 230 */
 	new_file = realloc(elf->file, new_file_size);
+
 	if (new_file == NULL) {
 		warn("failed to reallocate file");
 		return false;
@@ -204,28 +208,29 @@ Elf64_Shdr *get_section_hdr(elf64 *elf, char *name) {
 
 // expands a nonallocated section
 bool expand_section(elf64 *elf, char *name, size_t increment) {
+	Elf64_Shdr *section_hdr = NULL;
+	Elf64_Shdr expanded_section_hdr;	
 	int i;
-	Elf64_Shdr *section_hdr, *expanded_section_hdr;
-	Elf64_Phdr *program_hdr;
+	Elf64_Phdr *program_hdr = NULL;
 	uint8_t *expanded_section_end;
 	size_t displaced;
 
 	info("expanding %s", name);
 
-	expanded_section_hdr = get_section_hdr(elf, name);
-	if (expanded_section_hdr == NULL) {
+	expanded_section_hdr = *(Elf64_Shdr *)get_section_hdr(elf, name);
+	
+	if ((void *)&expanded_section_hdr == NULL) {
 		warn("unable to find section header %s", name);
 		return false;
 	}
 
-	displaced = elf->file_size - expanded_section_hdr->sh_offset - expanded_section_hdr->sh_size;
-
+	displaced = elf->file_size - expanded_section_hdr.sh_offset - expanded_section_hdr.sh_size;
+	
 	if (!increase_file_size(elf, increment)) {
 		warn("unable to increase file size");
 		return false;
 	}
-
-	if (elf->elf_hdr->e_shoff >= expanded_section_hdr->sh_offset) {
+	if (elf->elf_hdr->e_shoff >= expanded_section_hdr.sh_offset) {
 		info("increasing shoff 0x%lx to 0x%lx", 
 			elf->elf_hdr->e_shoff, elf->elf_hdr->e_shoff + increment);
 		elf->elf_hdr->e_shoff += increment;
@@ -233,7 +238,7 @@ bool expand_section(elf64 *elf, char *name, size_t increment) {
 
 	for (i = 0; i < elf->num_section_hdrs; i++) {
 		section_hdr = &elf->section_hdrs[i];
-		if (section_hdr->sh_offset > expanded_section_hdr->sh_offset) {
+		if (section_hdr->sh_offset > expanded_section_hdr.sh_offset) {
 			info("expanding section hdr (i: %d)", i);
 			section_hdr->sh_offset += increment;
 		}
@@ -241,13 +246,13 @@ bool expand_section(elf64 *elf, char *name, size_t increment) {
 
 	for (i = 0; i < elf->num_program_hdrs; i++) { //todo implement alignment checks
 		program_hdr = &elf->program_hdrs[i];
-		if (program_hdr->p_offset >= expanded_section_hdr->sh_offset) {
+		if (program_hdr->p_offset >= expanded_section_hdr.sh_offset) {
 			info("expanding segment hdr (i: %d)", i);
 			program_hdr->p_offset += increment;
 		}
 	}
 
-	expanded_section_end = &elf->file[expanded_section_hdr->sh_offset] + expanded_section_hdr->sh_size;
+	expanded_section_end = &elf->file[expanded_section_hdr.sh_offset] + expanded_section_hdr.sh_size;
 
 	memmove(expanded_section_end + increment, expanded_section_end, displaced);
 	memset(expanded_section_end, 0, increment);
@@ -315,7 +320,7 @@ bool create_section(elf64 *elf, char *name) {
 	new_hdr.sh_offset = elf->elf_hdr->e_shoff; // inserts before section header
 	new_hdr.sh_size = 0;
 	new_hdr.sh_link = 0; // change this after creation
-	new_hdr.sh_info = 0; // section type dependent
+	new_hdr.sh_info = elf->sh_info_index; // section type dependent
 	new_hdr.sh_addralign = 0;
 	new_hdr.sh_entsize = 0; // change this after creation;
 
@@ -338,6 +343,11 @@ bool add_symbols(elf64 *elf, symbol_t **symbols) {
 	Elf64_Shdr *symtab, *strtab;
 	Elf64_Sym *sym_tab;
 	int i;
+
+	/* Calculate the number of symbols */
+	for (tracer = symbols; *tracer != NULL; tracer++) {
+		elf->sh_info_index++;
+	}
 
 	symtab = get_section_hdr(elf, ".symtab");
 	if (symtab != NULL) strtab = get_linked_hdr(elf, symtab);
@@ -377,6 +387,7 @@ bool add_symbols(elf64 *elf, symbol_t **symbols) {
 		sym_tab[i].st_name = (size_t) str_tbl_tracer - (size_t) sym_str_tbl + 1;
 		sym_tab[i].st_value = (Elf64_Addr) symbols[i]->addr;
 		sym_tab[i].st_info = symbols[i]->is_function ? STT_FUNC : STT_OBJECT;
+		sym_tab[i].st_size = symbols[i]->size;
 		if (symbols[i]->section != NULL) {
 			sym_tab[i].st_shndx = get_section_hdr_index(elf, symbols[i]->section);
 		} else {
@@ -386,7 +397,6 @@ bool add_symbols(elf64 *elf, symbol_t **symbols) {
 		strcpy(str_tbl_tracer, symbols[i]->name);
 		str_tbl_tracer += strlen(symbols[i]->name) + 1;
 	}
-
 	append_to_section(elf, ".strtab", sym_str_tbl, total_len);
 	append_to_section(elf, ".symtab", (char *) sym_tab, num_symbols * sizeof(*sym_tab));
 
